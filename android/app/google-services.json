@@ -1,0 +1,62 @@
+{
+  "project_info": {
+    "project_number": "411924464141",
+    "firebase_url": "https://raven-bd517.firebaseio.com",
+    "project_id": "raven-bd517",
+    "storage_bucket": "raven-bd517.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:411924464141:android:c20d244bd1869612",
+        "android_client_info": {
+          "package_name": "com.prospectusoft.raven"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "411924464141-n2hussbk3ntpssbvfd40mg61khp05sq9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.prospectusoft.raven",
+            "certificate_hash": "2cf480a47448c1cafd8589d2d6e0d22d4ff279a5"
+          }
+        },
+        {
+          "client_id": "411924464141-70vmutpk63pctfe6j004o9bpvm594o1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXyqtiO0OVZQOeaKkMbIxpaLu2VLTkqxo"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "411924464141-70vmutpk63pctfe6j004o9bpvm594o1v.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "411924464141-7tm68luj8230rq74fvcvbqm91g07nvte.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.prospectusoft.raven"
+              }
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
