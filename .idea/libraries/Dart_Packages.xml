@@ -51,6 +51,20 @@
             </list>
           </value>
         </entry>
+        <entry key="cloud_firestore">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/cloud_firestore-0.7.3/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="cloud_functions">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/cloud_functions-0.0.2/lib" />
+            </list>
+          </value>
+        </entry>
         <entry key="collection">
           <value>
             <list>
@@ -103,14 +117,21 @@
         <entry key="firebase_auth">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_auth-0.5.12/lib" />
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_auth-0.5.15/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="firebase_core">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_core-0.2.5/lib" />
             </list>
           </value>
         </entry>
         <entry key="firebase_messaging">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_messaging-1.0.3/lib" />
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_messaging-1.0.4/lib" />
             </list>
           </value>
         </entry>
@@ -138,7 +159,14 @@
         <entry key="flutter_firebase_ui">
           <value>
             <list>
-              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_firebase_ui-0.0.7/lib" />
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_firebase_ui-0.0.8/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="flutter_local_notifications">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_local_notifications-0.3.6/lib" />
             </list>
           </value>
         </entry>
@@ -146,6 +174,13 @@
           <value>
             <list>
               <option value="$USER_HOME$/AppData/Local/Google/flutter/packages/flutter_test/lib" />
+            </list>
+          </value>
+        </entry>
+        <entry key="fluttertoast">
+          <value>
+            <list>
+              <option value="$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/fluttertoast-2.0.7/lib" />
             </list>
           </value>
         </entry>
@@ -474,6 +509,8 @@
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/boolean_selector-1.0.3/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/charcode-1.1.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/cipher-0.7.1/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/cloud_firestore-0.7.3/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/cloud_functions-0.0.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/collection-1.14.6/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/convert-2.0.1/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/crypto-2.0.3/lib" />
@@ -481,11 +518,14 @@
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/cupertino_icons-0.1.2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/english_words-3.1.0/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/fbsdk-0.0.2/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_auth-0.5.12/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_messaging-1.0.3/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_auth-0.5.15/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_core-0.2.5/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/firebase_messaging-1.0.4/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/fixnum-0.9.1+2/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_facebook_login-1.1.1/lib" />
-      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_firebase_ui-0.0.7/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_firebase_ui-0.0.8/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/flutter_local_notifications-0.3.6/lib" />
+      <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/fluttertoast-2.0.7/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/front_end-0.1.0-alpha.12/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/glob-1.1.5/lib" />
       <root url="file://$USER_HOME$/AppData/Local/Google/flutter/.pub-cache/hosted/pub.dartlang.org/google_sign_in-3.0.4/lib" />

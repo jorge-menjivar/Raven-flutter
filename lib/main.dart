@@ -5,9 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_firebase_ui/flutter_firebase_ui.dart';
-import 'username_screen.dart';
-
-String username = "";
+import 'package:raven/username_screen.dart';
 
 void main() => runApp(new MyApp());
 
@@ -73,7 +71,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     if (user == null) {
-      return new UsernameScreen();
       return new SignInScreen(
         title: "Log In or Sign Up to Raven",
         header: new Padding(
@@ -117,26 +114,10 @@ class _MyHomePageState extends State<MyHomePage> {
       }
       else {
         print ("ACCOUNT DOES NOT EXISTS ON DATABASE. USER IS SIGNING UP");
-        _createDbAccount();
+        Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
       }
     } catch (e) {
       print(e.toString());
-    }
-  }
-
-  void _createDbAccount() async {
-    try {
-      print ("CREATING ACCOUNT...");
-      var id = user.uid.toString();
-      var username = "my username"; //TODO
-      var email = user.email.toString();
-      var token = await user.getIdToken();
-      Firestore.instance.collection('users').document(id)
-        .setData({'u': username, 'e': email, 't': token});    
-      print ("CREATING ACCOUNT: SUCCESS");
-    } catch (e) {
-      print(e.toString());
-      print ("CREATING ACCOUNT: FAILURE");
     }
   }
   
@@ -181,8 +162,6 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 }
-
-
 class HomeScreen extends StatelessWidget {
   final FirebaseUser user;
 
@@ -220,116 +199,7 @@ class HomeScreen extends StatelessWidget {
           )));
 
   void _logout() async{
-    FirebaseAuth.instance.signOut();
+    print("hello");
+    //FirebaseAuth.instance.signOut();
   }
 }
-
-/**
-class RandomWords extends StatefulWidget {
-  @override
-  createState() => RandomWordsState();
-}
-
-class RandomWordsState extends State<RandomWords> {
-  final _suggestions = <WordPair>[];
-
-  final _saved = Set<WordPair>();
-
-  final _biggerFont = const TextStyle(fontSize: 18.0);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold (
-      appBar: AppBar(
-        title: Text('Startup Name Generator'),
-        actions: <Widget>[
-          IconButton(icon: Icon(Icons.list), onPressed: _pushSaved),
-        ]
-      ),
-      body: _buildSuggestions(),
-    );
-  }
-
-  Widget _buildSuggestions(){
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-
-      // The itemBuilder callback is called ONCE PER SUGGESTED WORD PAIRING
-      // It places each suggestion into a ListTile row.
-      // EVEN ROW = ListTile Row
-      // ODD ROW = Divider
-      itemBuilder: (context, i){
-
-        // Add a one-pixel-high divider before each row in the ListView
-        if (i.isOdd) return Divider();
-
-        // Syntax "i ~/ 2" divides i  by 2 and returns integer result.
-        // i = 1, 2, 3, 4, 5 becomes 0, 1, 1, 2, 2.
-        // Calculating the actual number of word pairings in the ListView
-        // minus the dividers
-        final index = i ~/ 2;
-
-        // If you have reached the end of the available word pairings...
-        if (index >= _suggestions.length) {
-          _suggestions.addAll(generateWordPairs().take(10));
-        }
-        return _buildRow(_suggestions[index]);
-      }
-    );
-  }
-
-  Widget _buildRow(WordPair pair){
-    final alreadySaved = _saved.contains(pair);
-    return ListTile(
-      title: Text(
-        pair.asPascalCase,
-        style: _biggerFont,
-      ),
-      trailing: Icon(
-        alreadySaved ? Icons.favorite : Icons.favorite_border,
-        color: alreadySaved ? Colors.red : null,
-      ),
-      onTap: () {
-        setState(() {
-                  if (alreadySaved) {
-                    _saved.remove(pair);
-                  } else {
-                    _saved.add(pair);
-                  }
-                });
-      },
-    );
-  }
-
-  void _pushSaved() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) {
-          final tiles = _saved.map(
-            (pair) {
-              return ListTile(
-                title: Text(
-                  pair.asPascalCase,
-                  style: _biggerFont,
-                ),
-              );
-            },
-          );
-          final divided = ListTile
-            .divideTiles(
-              context: context,
-              tiles: tiles,
-            )
-            .toList();
-          
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('Saved Suggestions'),
-            ),
-            body:  ListView(children: divided),
-          );
-        },
-      ),
-    );
-  }
-} **/
