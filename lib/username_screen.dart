@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
@@ -7,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
+import 'home_screen.dart';
 
 
 
@@ -32,70 +32,73 @@ class UsernameScreenState extends State<UsernameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
-      appBar: new AppBar(
-        title: new Text("Create Username"),
-        elevation: 4.0,
-      ),
-      body: new Builder(
-        builder: (BuildContext context) {
-          return Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: new BoxDecoration(color: Colors.amber),
-            child: new Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                new TextFormField(
-                  key: _formFieldKey,
-                  controller: _controllerUsername,
-                  keyboardType: TextInputType.text,
-                  autocorrect: false,
-                  autofocus: true,
-                  autovalidate: true,
-                  decoration: new InputDecoration(
-                    labelText: "What will be your username?",
-                    hintText: "Friends will find you with this",
-                    ),
-                  validator: (username) {
-                    if (_firstTry == false && username.length < 4 || username.length > 20)
-                      return 'Usernames are lower case. 4 to 20 characters long.';
-                    if (username.contains(new RegExp(r'\W')))
-                      return 'Only letter, digits, and _';
-                    if (_available == false){
-                      _counter++;
-                      if (_counter > 1){
-                        _counter = 0;
-                        _available = true;
+    return new WillPopScope(
+      onWillPop: () async => false,
+        child: new Scaffold(
+        appBar: new AppBar(
+          title: new Text("Create Username"),
+          elevation: 4.0,
+        ),
+        body: new Builder(
+          builder: (BuildContext context) {
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              decoration: new BoxDecoration(color: Colors.amber),
+              child: new Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  new TextFormField(
+                    key: _formFieldKey,
+                    controller: _controllerUsername,
+                    keyboardType: TextInputType.text,
+                    autocorrect: false,
+                    autofocus: true,
+                    autovalidate: true,
+                    decoration: new InputDecoration(
+                      labelText: "What will be your username?",
+                      hintText: "Friends will find you with this",
+                      ),
+                    validator: (username) {
+                      if (_firstTry == false && username.length < 4 || username.length > 20)
+                        return 'Usernames are lower case. 4 to 20 characters long.';
+                      if (username.contains(new RegExp(r'\W')))
+                        return 'Only letter, digits, and _';
+                      if (_available == false){
+                        _counter++; //For first run on Validate() call
+                        if (_counter > 1){
+                          _counter = 0;
+                          _available = true; //For second(last) run on Validate() call
+                        }
+                        return 'Username is unavailable';
                       }
-                      return 'Username is unavailable';
-                    }
-                  },
-                ),
-                new Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    
-                  ],
-                ),
-                new SizedBox(
-                  height: 32.0,
-                ),
-                new RaisedButton(
-                    child: new Text("CONTINUE TO RAVEN"), onPressed: (){
-                      _firstTry = false;
-                      if (_formFieldKey.currentState.validate() == true){
-                        Scaffold
-                        .of(context)
-                        .showSnackBar(SnackBar(content: Text('Processing Data')));
-                        _tryRegistration();
+                    },
+                  ),
+                  new Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      
+                    ],
+                  ),
+                  new SizedBox(
+                    height: 32.0,
+                  ),
+                  new RaisedButton(
+                      child: new Text("CONTINUE TO RAVEN"), onPressed: (){
+                        _firstTry = false;
+                        if (_formFieldKey.currentState.validate() == true){
+                          Scaffold
+                          .of(context)
+                          .showSnackBar(SnackBar(content: Text('Processing Data')));
+                          _tryRegistration();
+                        }
                       }
-                    }
-                )
-              ],
-            )
-          );
-        },
+                  )
+                ],
+              )
+            );
+          },
+        )
       )
     );
   } 
@@ -120,6 +123,7 @@ class UsernameScreenState extends State<UsernameScreen> {
           }
           else if (response.statusCode == 420){
             //TODO when username is accepted and user info is in database.
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, username)));
           }
           else if (response.statusCode == 500){
             //TODO use firebase to collect error data.

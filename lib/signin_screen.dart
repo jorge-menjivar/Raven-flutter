@@ -5,36 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
-import 'welcome_screen.dart';
-import 'username_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_firebase_ui/flutter_firebase_ui.dart';
 
-void main() => runApp(new MyApp());
+class MySignInScreen extends StatefulWidget {
+  final FirebaseUser user;
 
-class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return new MaterialApp(
-      title: 'Raven',
-      theme: new ThemeData(
-        primarySwatch: Colors.purple,
-      ),
-      home: new MyInitPage(title: 'Welcome'),
-    );
-  }
-}
-
-class MyInitPage extends StatefulWidget {
-  MyInitPage({Key key, this.title}) : super(key: key);
-
-
-  final String title;
+  MySignInScreen(this.user);
 
   @override
-  _MyInitPageState createState() => new _MyInitPageState();
+  SignInScreenState createState() => new SignInScreenState();
 }
 
-class _MyInitPageState extends State<MyInitPage> {
+class SignInScreenState extends State<MySignInScreen> {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   StreamSubscription<FirebaseUser> _listener;
@@ -42,27 +25,50 @@ class _MyInitPageState extends State<MyInitPage> {
   FirebaseUser user;
 
   @override
+  Widget build(BuildContext context) {
+    return new SignInScreen(
+      title: "Log In or Sign Up to Raven",
+      header: new Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32.0),
+        child: new Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: new Text("Use your email... or social media"),
+        ),
+      ),
+      providers: [
+        ProvidersTypes.email,
+        ProvidersTypes.google,
+        ProvidersTypes.facebook
+      ],
+    );
+  }
+
+  
+  @override
   void initState() {
     super.initState();
     _checkCurrentUser();
   }
 
   @override
-  Widget build(BuildContext context) {
+  void dispose() {
+    _listener.cancel();
+    super.dispose();
   }
 
   void _checkCurrentUser() async {
     user = await _auth.currentUser();
 
-    if (user == null) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => WelcomeScreen(user: user)));
-    }
-    else {
-      _checkAccountDbExistence();
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, "jmen900")));
-    }
+    _listener = _auth.onAuthStateChanged.listen((FirebaseUser myUser) {
+      setState(() {
+        user = myUser;
+        if (user != null && user.displayName != null){ //Making sure that we only continue while background pro have completed.
+          _checkAccountDbExistence(); //Create Display name & Database account if it does not yet exist.
+        }
+      });
+    });
   }
-  
+
   void _checkAccountDbExistence() async {
     try {
       final String id = user.uid.toString();
@@ -74,7 +80,8 @@ class _MyInitPageState extends State<MyInitPage> {
       }
       else {
         print ("ACCOUNT DOES NOT EXISTS ON DATABASE. USER IS SIGNING UP");
-        Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
+        //Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, "jmen900")));
       }
     } catch (e) {
       print(e.toString());
