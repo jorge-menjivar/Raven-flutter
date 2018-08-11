@@ -3,11 +3,15 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:Raven/utils/message_model.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 
 // Storage
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
+
 
 class ConversationScreen extends StatefulWidget {
   final FirebaseUser user;
@@ -25,26 +29,198 @@ class ConversationScreenState extends State<ConversationScreen> {
   
   ConversationScreenState({this.user, this.contact});
 
+  final String tableName = "Messages";
+
+  final _biggerFont = const TextStyle(fontSize: 12.0);
+
+  var queryResult;
+
+  @override
+  void initState() {
+      // TODO: implement initState
+      super.initState();
+      doDbStuff();
+  }
+
+  Future doDbStuff() async {
+    await _getDb(contact).then((database) async{
+    var result = await _getQuery(database);
+    this.setState(() => queryResult = result);
+    });
+
+  }
+
+  
+
   @override
   Widget build(BuildContext context) {
-    fileTest();
     return Scaffold(
       appBar: new AppBar(
         title: new Text("Conversation with " + contact),
         elevation: 4.0,
       ),
-      body: new Container(
-      )
+      body: buildMessages()
     );
   }
 
-  void fileTest() async {
-      Storage storage = new Storage(contact: contact);
-      await storage.writeToFile("hi");
-      await storage.readFromFile();
+
+
+
+
+
+  /// -------------------------------------- DATABASE -----------------------------------------
+
+  // Use this method to access the database, because initialization of the database (it has to go through the method channel)
+
+  Future _getDb(String contact) async {
+    // Get a location using path_provider
+    Directory documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, 'convos', contact);
+    return await openDatabase(path, version: 1,
+      onCreate: (Database db, int version) async {
+        // When creating the db, create the table
+        await db.execute(
+            "CREATE TABLE $tableName ("
+                "${Message.db_sTime} TEXT PRIMARY KEY, "
+                "${Message.db_rTime} TEXT, "
+                "${Message.db_message} TEXT, "
+                "${Message.db_image} TEXT, "
+                "${Message.db_status} TEXT"
+                ")");
+      });
   }
-  
+
+
+   // Get a message by its sTime, if there is not entry for that ID, returns null.
+  Future<Message> getMessage(Database db, String contact, String sTime) async{
+    var result = await db.rawQuery('SELECT * FROM $tableName WHERE ${Message.db_sTime} = "$sTime"');
+    if(result.length == 0)return null;
+    return new Message.fromMap(result[0]);
+  }
+
+  // Delete requested message
+  Future<int> deleteMessage(Database db, String contact, String sTime) async{
+    return db.rawDelete('DELETE FROM $tableName WHERE ${Message.db_sTime} = "$sTime"');
+  }
+
+  // Close database
+  Future close(Database db, String contact) async {
+    return db.close();
+  }
+
+  void checkTime() async {
+    var now = DateTime.now().millisecondsSinceEpoch;
+    print(now);
+    var inCurrentTime = DateTime.fromMillisecondsSinceEpoch(now);
+    print(inCurrentTime);
+
+  }
+
+  Future addToDb(Database db) async {
+    for (int i = 0; i < 5; i++){
+      await db.rawInsert(
+            'INSERT INTO '
+                '$tableName(${Message.db_sTime}, ${Message.db_rTime}, ${Message.db_message}, ${Message.db_image}, ${Message.db_status})'
+                ' VALUES("${DateTime.now().millisecondsSinceEpoch}", "0", "Hello", "0", "0")');
+    }
+  }
+
+  Future _getQuery(Database db) async {
+    var query = await db.rawQuery('SELECT * FROM $tableName ORDER BY ${Message.db_sTime} DESC');
+    if (query.length == 0)print('NO MESSAGES');
+    return query;
+  }
+
+  Widget buildMessages() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+
+      // For even rows, the function adds a ListTile row for the word pairing.
+      // For odd rows, the function adds a Divider widget to visually
+      itemBuilder: (context, i){
+        if (queryResult != null && queryResult.length> 0 && i < queryResult.length){
+          var row = queryResult[i];
+
+          if (row['status'] == '0'){
+            return _buildSentRow(row['message']);
+          }
+          else {
+            return _buildReceivedRow(row['message'], row['status']);
+          }
+        }
+      }
+    );
+  }
+
+  Widget _buildSentRow(String message) {
+    return ListTile(
+      title: Text(
+        message,
+        style: _biggerFont,
+      ),  
+    );
+  }
+
+  Widget _buildReceivedRow(String message, String status) {
+    return ListTile(
+      title: Text(
+        message,
+        style: _biggerFont,
+      ),  
+    );
+  }
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class Storage {
@@ -170,4 +346,8 @@ class ReceivedMessage {
     'image' : image,
     'status' : status
   };
+
+
+
+
 }

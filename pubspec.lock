@@ -29,13 +29,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.2"
-  bignum:
-    dependency: transitive
-    description:
-      name: bignum
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.0.7"
   boolean_selector:
     dependency: transitive
     description:
@@ -50,13 +43,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.1.1"
-  cipher:
-    dependency: transitive
-    description:
-      name: cipher
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.7.1"
   cloud_firestore:
     dependency: "direct main"
     description:
@@ -141,13 +127,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.4"
-  fixnum:
-    dependency: transitive
-    description:
-      name: fixnum
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.9.1+2"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -305,13 +284,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.4.1"
-  oauth:
-    dependency: transitive
-    description:
-      name: oauth
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.4.0"
   package_config:
     dependency: transitive
     description:
@@ -429,6 +401,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.4.0"
+  sqflite:
+    dependency: "direct main"
+    description:
+      name: sqflite
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.11.1"
   stack_trace:
     dependency: transitive
     description:
@@ -450,6 +429,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.0.2"
+  synchronized:
+    dependency: transitive
+    description:
+      name: synchronized
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "1.5.1+1"
   term_glyph:
     dependency: transitive
     description:
@@ -464,13 +450,6 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "0.12.37"
-  twitter:
-    dependency: "direct main"
-    description:
-      name: twitter
-      url: "https://pub.dartlang.org"
-    source: hosted
-    version: "0.5.2"
   typed_data:
     dependency: transitive
     description:
@@ -514,5 +493,5 @@ packages:
     source: hosted
     version: "2.1.13"
 sdks:
-  dart: ">=2.0.0-dev.52.0 <=2.0.0-dev.58.0.flutter-f981f09760"
+  dart: ">=2.0.0-dev.58 <=2.0.0-dev.58.0.flutter-f981f09760"
   flutter: ">=0.2.4 <2.0.0"
