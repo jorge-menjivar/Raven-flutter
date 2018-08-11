@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'username_screen.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_firebase_ui/flutter_firebase_ui.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class MySignInScreen extends StatefulWidget {
   final FirebaseUser user;
@@ -18,9 +21,10 @@ class MySignInScreen extends StatefulWidget {
 }
 
 class SignInScreenState extends State<MySignInScreen> {
-
   final FirebaseAuth _auth = FirebaseAuth.instance;
   StreamSubscription<FirebaseUser> _listener;
+
+  final secureStorage = new FlutterSecureStorage();
 
   FirebaseUser user;
 
@@ -76,12 +80,13 @@ class SignInScreenState extends State<MySignInScreen> {
       if (ds.exists) {
         print ("ACCOUNT ALREADY EXISTS ON DATABASE. USER IS LOGGING IN");
         _checkToken();
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, "jmen900")));
+        var username = await ds['u'];
+        secureStorage.write(key: 'username', value: username);
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, username)));
       }
       else {
         print ("ACCOUNT DOES NOT EXISTS ON DATABASE. USER IS SIGNING UP");
-        //Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, "jmen900")));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
       }
     } catch (e) {
       print(e.toString());
@@ -102,7 +107,7 @@ class SignInScreenState extends State<MySignInScreen> {
   void _checkRefreshedToken(var token) async {
     var id = user.uid.toString();
     DocumentSnapshot ds = await Firestore.instance.collection('users').document(id).get();
-    var dbToken = ds['t'];
+    var dbToken = await ds['t'];
     if (dbToken is String) {
       if (token == dbToken){ //Token matches database. Token is up to date.
         print("TOKEN IS UP TO DATE");

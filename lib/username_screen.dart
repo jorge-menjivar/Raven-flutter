@@ -1,12 +1,18 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import 'home_screen.dart';
+
+// Server
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:http/http.dart' as http;
-import 'home_screen.dart';
+
+// Storage
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 
 
@@ -21,6 +27,8 @@ class UsernameScreen extends StatefulWidget {
 class UsernameScreenState extends State<UsernameScreen> {
   final TextEditingController _controllerUsername = new TextEditingController();
   final FirebaseUser user;
+  final secureStorage = new FlutterSecureStorage();
+
 
   UsernameScreenState({this.user});
 
@@ -112,7 +120,7 @@ class UsernameScreenState extends State<UsernameScreen> {
       await client.post(
         "https://us-central1-raven-bd517.cloudfunctions.net/usernameFunctions/" +  username,
         headers: {HttpHeaders.AUTHORIZATION: token})
-        .then((response) {
+        .then((response) async{
           final responseJson = json.decode(response.body);
           print(responseJson);
           if (response.statusCode == 402){
@@ -121,8 +129,9 @@ class UsernameScreenState extends State<UsernameScreen> {
               _available = false;
               _formFieldKey.currentState.validate();
           }
-          else if (response.statusCode == 420){
+          else if (response.statusCode == 420) {
             //TODO when username is accepted and user info is in database.
+            await secureStorage.write(key: 'username', value: username);
             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, username)));
           }
           else if (response.statusCode == 500){

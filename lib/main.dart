@@ -6,9 +6,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'home_screen.dart';
 import 'welcome_screen.dart';
-import 'username_screen.dart';
 
-void main() => runApp(new MyApp());
+// Storage
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+void main(){
+  runApp(new MyApp());
+}
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -35,50 +41,49 @@ class MyInitPage extends StatefulWidget {
 }
 
 class _MyInitPageState extends State<MyInitPage> {
-
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  StreamSubscription<FirebaseUser> _listener;
-
+  FirebaseAuth _auth = FirebaseAuth.instance;
   FirebaseUser user;
+  final secureStorage = new FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
+    _getDir();
     _checkCurrentUser();
   }
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: new AppBar(
+        title: new Text(""),
+        elevation: 4.0,
+      ),
+      body: new Container()
+    );
   }
 
   void _checkCurrentUser() async {
-    user = await _auth.currentUser();
-
-    if (user == null) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => WelcomeScreen(user: user)));
-    }
-    else {
-      _checkAccountDbExistence();
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, "jmen900")));
-    }
-  }
-  
-  void _checkAccountDbExistence() async {
-    try {
-      final String id = user.uid.toString();
-      DocumentSnapshot ds = await Firestore.instance.collection('users').document(id).get();
-      if (ds.exists) {
-        print ("ACCOUNT ALREADY EXISTS ON DATABASE. USER IS LOGGING IN");
-        _checkToken();
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, "jmen900")));
-      }
+    await _auth.currentUser().then((u) async{
+      user = u;
+      if (user == null) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => WelcomeScreen(user: user)));
+      } 
       else {
-        print ("ACCOUNT DOES NOT EXISTS ON DATABASE. USER IS SIGNING UP");
-        Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
+        _checkToken();
+        var username = await secureStorage.read(key: 'username');
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomeScreen(user, username)));
       }
-    } catch (e) {
-      print(e.toString());
-    }
+    });
+  }
+
+  void _getDir(){
+
+  }
+
+  Future<String> get _localPath async {
+  final directory = await getApplicationDocumentsDirectory();
+  return directory.path;
   }
   
   void _checkToken() async {

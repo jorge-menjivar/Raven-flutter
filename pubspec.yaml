@@ -1,4 +1,4 @@
-name: raven
+name: Raven
 description: Raven (flutter)
 
 dependencies:
@@ -27,14 +27,14 @@ dependencies:
 
   http: "^0.11.3+16"
 
-
+  path_provider: ^0.4.1
+  flutter_secure_storage: ^3.1.1
 
 
 dev_dependencies:
 
   flutter_test:
-    sdk: flutter
-
+   sdk: flutter
 
 # For information on the generic Dart part of this file, see the
 # following page: https://www.dartlang.org/tools/pub/pubspec
