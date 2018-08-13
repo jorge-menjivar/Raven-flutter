@@ -29,28 +29,41 @@ class ConversationScreenState extends State<ConversationScreen> {
   
   ConversationScreenState({this.user, this.contact});
 
+  
+  final List<ChatMessage> _messages = <ChatMessage>[];
+  
+  final TextEditingController _textController = new TextEditingController();
+
   final String tableName = "Messages";
 
-  final _biggerFont = const TextStyle(fontSize: 12.0);
+  final _biggerFont = const TextStyle(fontSize: 17.0);
 
   var queryResult;
 
+  Database dataB;
+
   @override
   void initState() {
-      // TODO: implement initState
       super.initState();
-      doDbStuff();
+      initQuery();
   }
 
-  Future doDbStuff() async {
-    await _getDb(contact).then((database) async{
-    var result = await _getQuery(database);
-    this.setState(() => queryResult = result);
+  Future initQuery() async {
+    await _getDb(contact)
+    .then((database) async{
+      dataB = database;
+      var result = await _getQuery(database);
+      this.setState(() => queryResult = result);
     });
 
   }
 
-  
+  Future addToDb(Database db, String text) async {
+    await db.rawInsert(
+          'INSERT INTO '
+              '$tableName(${Message.db_sTime}, ${Message.db_rTime}, ${Message.db_message}, ${Message.db_image}, ${Message.db_status}, ${Message.db_birth})'
+              ' VALUES("${DateTime.now().millisecondsSinceEpoch}", "0", "${text}", "0", "0", "0")');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +72,106 @@ class ConversationScreenState extends State<ConversationScreen> {
         title: new Text("Conversation with " + contact),
         elevation: 4.0,
       ),
-      body: buildMessages()
+      body: new Builder(
+        builder: (BuildContext context) {
+          return new Column(
+            children: <Widget>[
+              new Flexible(
+                child: buildMessages(),
+              ),
+              new Divider(height: 1.0),
+              new Container(
+              decoration: new BoxDecoration(
+                color: Theme.of(context).cardColor),
+              child: _buildTextComposer(),
+              ),
+            ],
+          );
+        }
+      )
+    );
+  }
+
+
+  Widget _buildTextComposer() {
+    return new Container(
+       margin: const EdgeInsets.symmetric(horizontal: 8.0),
+       child: new Row(
+          children: <Widget>[
+            new Flexible(
+              child: new TextField(
+                controller: _textController,
+                onSubmitted: _handleSubmitted,
+                decoration: new InputDecoration.collapsed(
+                hintText: "Send a message"),
+              ),
+            ),
+            new Container(
+              margin: new EdgeInsets.symmetric(horizontal: 4.0),
+              child: new IconButton(
+                icon: new Icon(
+                  Icons.send,
+                  color: Colors.purple),
+                onPressed: () {
+                  if (_textController.text.contains(new RegExp(r'\S'))) {
+                    _handleSubmitted(_textController.text);
+                  }
+                }
+              ),
+           ),
+         ]
+       )
+    );
+  }
+
+  _handleSubmitted(String text) async{
+    _textController.clear();
+    addToDb(dataB, text);
+    var result = await _getQuery(dataB);
+    this.setState(() => queryResult = result);
+  }
+
+
+  Widget buildMessages() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(22.0),
+      reverse: true,
+
+      // For even rows, the function adds a ListTile row for the word pairing.
+      // For odd rows, the function adds a Divider widget to visually
+      itemBuilder: (context, i){
+        if (queryResult != null && queryResult.length> 0 && i < queryResult.length){
+          var row = queryResult[i];
+          if (row['birth'] == '0'){
+            return _buildSentRow(row['message'], row['status']);
+          }
+          else {
+            return _buildReceivedRow(row['message']);
+          }
+        }
+      }
+    );
+  }
+
+  Widget _buildSentRow(String message, String status) {
+    return ListTile(
+      contentPadding: EdgeInsets.only(left: 80.0),
+      title: Text(
+        message,
+        textAlign: TextAlign.right,
+        style: _biggerFont,
+      ), 
+    );
+  }
+
+  Widget _buildReceivedRow(String message) {
+    return ListTile(
+      contentPadding: EdgeInsets.only(right: 80.0),
+      title: Text(
+        message,
+        textAlign: TextAlign.left,
+        style: _biggerFont,
+      ),  
     );
   }
 
@@ -85,7 +197,8 @@ class ConversationScreenState extends State<ConversationScreen> {
                 "${Message.db_rTime} TEXT, "
                 "${Message.db_message} TEXT, "
                 "${Message.db_image} TEXT, "
-                "${Message.db_status} TEXT"
+                "${Message.db_status} TEXT, "
+                "${Message.db_birth} TEXT"
                 ")");
       });
   }
@@ -104,7 +217,7 @@ class ConversationScreenState extends State<ConversationScreen> {
   }
 
   // Close database
-  Future close(Database db, String contact) async {
+  Future closeDb(Database db) async {
     return db.close();
   }
 
@@ -116,62 +229,53 @@ class ConversationScreenState extends State<ConversationScreen> {
 
   }
 
-  Future addToDb(Database db) async {
-    for (int i = 0; i < 5; i++){
-      await db.rawInsert(
-            'INSERT INTO '
-                '$tableName(${Message.db_sTime}, ${Message.db_rTime}, ${Message.db_message}, ${Message.db_image}, ${Message.db_status})'
-                ' VALUES("${DateTime.now().millisecondsSinceEpoch}", "0", "Hello", "0", "0")');
-    }
-  }
-
   Future _getQuery(Database db) async {
     var query = await db.rawQuery('SELECT * FROM $tableName ORDER BY ${Message.db_sTime} DESC');
     if (query.length == 0)print('NO MESSAGES');
     return query;
   }
 
-  Widget buildMessages() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-
-      // For even rows, the function adds a ListTile row for the word pairing.
-      // For odd rows, the function adds a Divider widget to visually
-      itemBuilder: (context, i){
-        if (queryResult != null && queryResult.length> 0 && i < queryResult.length){
-          var row = queryResult[i];
-
-          if (row['status'] == '0'){
-            return _buildSentRow(row['message']);
-          }
-          else {
-            return _buildReceivedRow(row['message'], row['status']);
-          }
-        }
-      }
-    );
-  }
-
-  Widget _buildSentRow(String message) {
-    return ListTile(
-      title: Text(
-        message,
-        style: _biggerFont,
-      ),  
-    );
-  }
-
-  Widget _buildReceivedRow(String message, String status) {
-    return ListTile(
-      title: Text(
-        message,
-        style: _biggerFont,
-      ),  
-    );
-  }
-
 }
 
+
+
+
+
+
+
+
+class ChatMessage extends StatelessWidget {
+    final String text;
+    final String sentTime;
+    final String contact;
+  ChatMessage({this.text, this.sentTime, this.contact});
+
+  @override
+  Widget build(BuildContext context) {
+    return new Container(
+      margin: const EdgeInsets.symmetric(vertical: 10.0),
+      child: new Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          new Container(
+            margin: const EdgeInsets.only(right: 16.0),
+            child: new CircleAvatar(child: new Text(contact[0])),
+          ),
+          new Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              new Text(contact, style: Theme.of(context).textTheme.subhead),
+              new Container(
+                margin: const EdgeInsets.only(top: 5.0),
+                child: new Text(text),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 
 
