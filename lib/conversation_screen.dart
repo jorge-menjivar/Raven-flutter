@@ -4,48 +4,121 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:Raven/utils/message_model.dart';
+import 'package:Raven/utils/room_model.dart';
+import 'package:Raven/utils/listeners_database.dart';
+import 'package:Raven/utils/request_entry.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
+
+
+// New Convo
+import 'package:http/http.dart' as http;
 
 // Storage
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
-
+import 'package:firebase_database/firebase_database.dart';
 
 class ConversationScreen extends StatefulWidget {
   final FirebaseUser user;
   final String contact;
+  final String username;
+  final String room;
 
-  ConversationScreen({this.user, this.contact});
+  ConversationScreen({this.user, this.contact, this.username, this.room});
 
   @override
-  ConversationScreenState createState() => new ConversationScreenState(user: user, contact: contact);
+  ConversationScreenState createState() => new ConversationScreenState(user: user, contact: contact, username: username, room: room);
 }
 
 class ConversationScreenState extends State<ConversationScreen> {
   final FirebaseUser user;
   final String contact;
+  final String username;
+  final String room;
   
-  ConversationScreenState({this.user, this.contact});
-
-  
-  final List<ChatMessage> _messages = <ChatMessage>[];
+  ConversationScreenState({this.user, this.contact, this.username, this.room});
   
   final TextEditingController _textController = new TextEditingController();
-
-  final String tableName = "Messages";
-
   final _biggerFont = const TextStyle(fontSize: 17.0);
 
+  final String tableName = "Messages";
   var queryResult;
-
   Database dataB;
+
+  var mainReference;
+  var statusesRef;
+  var _inSub, _dSub, _sSub;
+
 
   @override
   void initState() {
       super.initState();
+      mainReference = FirebaseDatabase.instance.reference().child('messages').child(room).child('convo');
+      statusesRef = FirebaseDatabase.instance.reference().child('messages').child(room).child('statuses');
       initQuery();
+      if (room == '0')
+        startNewConvo();
+  }
+
+
+  @override
+  void dispose() {
+    super.dispose();
+    closeDb(dataB);
+    _inSub.cancel();
+    _dSub.cancel();
+    _sSub.cancel();
+  }
+
+  void startNewConvo() async{
+    try {
+      var client = new http.Client();
+      String token = await user.getIdToken();
+      await client.post(
+        "https://us-central1-raven-bd517.cloudfunctions.net/notificationFunctions/command/$username/$contact/" ,
+        headers: {HttpHeaders.AUTHORIZATION: token})
+        .then((response) async{
+          try {
+            _saveRoomToDb(response.body);
+            _sendRoomRequest(response.body);
+          }
+          catch(e){
+            print(e);
+          }
+        })
+      .whenComplete(client.close);
+    }
+    catch(e){
+      print('CONNECTION ERROR');
+    }
+  }
+
+  void _saveRoomToDb(String room) async{
+    ListenersDatabase listeners = new ListenersDatabase();
+    var time = DateTime.now().millisecondsSinceEpoch.toString();
+    await listeners.getDb()
+    .then((lisDb) async {
+      await lisDb.rawInsert(
+          'INSERT INTO '
+              'Listeners(${Room.db_room}, ${Room.db_contact}, ${Room.db_time})'
+              ' VALUES("$room", "$contact", "$time")')
+      .then((){
+        listeners.closeDb(lisDb);
+      });
+    });
+  }
+
+
+  void _sendRoomRequest(String room) async{
+    var reqRef = FirebaseDatabase.instance.reference().child('users').child(contact).child('requests');
+    var request = new RequestEntry(
+      //TODO let the receiver very the username of the sender through the server instead
+      room: room,
+      contact: username
+    );
+    reqRef.push().set(request.toJson());
   }
 
   Future initQuery() async {
@@ -56,13 +129,65 @@ class ConversationScreenState extends State<ConversationScreen> {
       this.setState(() => queryResult = result);
     });
 
+    // Listeners for online database.
+    _inSub = mainReference.orderByKey().limitToLast(1).onChildAdded.listen(_messageAdded); // New Message
+    _dSub = mainReference.onChildRemoved.listen(_messageDeleted); // Remove Message
+    _sSub = statusesRef.onChildChanged.listen(_statusChanged); // Message Status Changed
   }
 
-  Future addToDb(Database db, String text) async {
+
+  // Called when a new message has been received.
+  void _messageAdded(Event event) async{
+    MessageEntry mEntry = MessageEntry.fromSnapshot(event.snapshot);
+    var sTime = event.snapshot.key;
+    var rTime = DateTime.now().millisecondsSinceEpoch.toString();
+
+    if (mEntry.birth != username){
+      await getMessageQuery(dataB, sTime)
+      .then((localQ) async{
+        if (localQ.length == 0){
+          var message = new MessageEntry(
+            message:  mEntry.message,
+            birth:  mEntry.birth
+          );
+
+          addToDb(dataB, message, sTime, rTime, '2'); //Status 2 (Message Received)
+          
+          var result = await _getQuery(dataB);
+          setState(() => queryResult = result);
+
+          var status = new StatusEntry(
+            status: "2"
+          );
+
+          // Letting the database know that we received the message.
+          statusesRef.child(sTime).update(status.toJson());
+        }
+        else return;
+      });
+    }
+  }
+
+  void _statusChanged(Event event) async{
+    var sEntry = StatusEntry.fromSnapshot(event.snapshot);
+    var sTime = event.snapshot.key;
+    updateMessage(dataB, sTime, 'status', sEntry.status);
+  }
+
+
+  void _messageDeleted(Event event) async{
+    var sTime = event.snapshot.key;
+    deleteMessage(dataB, sTime);
+
+    var result = await _getQuery(dataB);
+    setState(() => queryResult = result);
+  }
+
+  Future addToDb(Database db, MessageEntry entry, String sTime, String rTime, String status) async {
     await db.rawInsert(
           'INSERT INTO '
               '$tableName(${Message.db_sTime}, ${Message.db_rTime}, ${Message.db_message}, ${Message.db_image}, ${Message.db_status}, ${Message.db_birth})'
-              ' VALUES("${DateTime.now().millisecondsSinceEpoch}", "0", "${text}", "0", "0", "0")');
+              ' VALUES("$sTime", "$rTime", "${entry.message}", "${entry.image}", "$status", "${entry.birth}")');
   }
 
   @override
@@ -124,11 +249,39 @@ class ConversationScreenState extends State<ConversationScreen> {
     );
   }
 
+
+
+  // Creating message and sending its values to all databases.
   _handleSubmitted(String text) async{
     _textController.clear();
-    addToDb(dataB, text);
-    var result = await _getQuery(dataB);
-    this.setState(() => queryResult = result);
+    var sTime = DateTime.now().millisecondsSinceEpoch.toString();
+
+    // Main message
+    var message = new MessageEntry(
+      message:  text,
+      birth:  username
+    );
+
+    // Status linked to the message
+    var status = new StatusEntry(
+      status: "1" // Status is SENT because when it is first read it would have already been sent.
+    );
+
+    // Add to local database with UNSENT status.
+    addToDb(dataB, message, sTime, "0", "0");
+    
+    print(user.uid.toString());
+  
+    // Add to cloud database
+    mainReference.child(sTime).set(message.toJson())
+    .then((v) async{
+      statusesRef.child(sTime).set(status.toJson())
+      .then((v) async{
+        // Refresh Screen
+        var result = await _getQuery(dataB);
+        this.setState(() => queryResult = result);
+      });
+    });
   }
 
 
@@ -142,37 +295,64 @@ class ConversationScreenState extends State<ConversationScreen> {
       itemBuilder: (context, i){
         if (queryResult != null && queryResult.length> 0 && i < queryResult.length){
           var row = queryResult[i];
-          if (row['birth'] == '0'){
-            return _buildSentRow(row['message'], row['status']);
+          if (row['birth'] == contact){
+            return _buildReceivedRow(row['message'], row['sTime']);
           }
           else {
-            return _buildReceivedRow(row['message']);
+            return _buildSentRow(row['message'], row['status'], row['sTime']);
           }
         }
       }
     );
   }
 
-  Widget _buildSentRow(String message, String status) {
+  Widget _buildSentRow(String message, String status, String sTime) {
     return ListTile(
       contentPadding: EdgeInsets.only(left: 80.0),
       title: Text(
         message,
         textAlign: TextAlign.right,
         style: _biggerFont,
-      ), 
+      ),
+      onTap: () {      // Add 9 lines from here...
+        setState(() {
+          _deleteSentMessage(sTime);
+        });
+      }  
     );
   }
 
-  Widget _buildReceivedRow(String message) {
+  Widget _buildReceivedRow(String message, String sTime) {
     return ListTile(
       contentPadding: EdgeInsets.only(right: 80.0),
       title: Text(
         message,
         textAlign: TextAlign.left,
         style: _biggerFont,
-      ),  
+      ),
+      onTap: () {      // Add 9 lines from here...
+        setState(() {
+          _deleteSentMessage(sTime);
+        });
+      }  
     );
+  }
+
+
+
+  _deleteSentMessage(String sTime){
+    mainReference.child(sTime).set(null)
+    .then((v) async{
+      statusesRef.child(sTime).set(null)
+      .then((v) async{
+        // Refresh Screen
+        deleteMessage(dataB, sTime)
+        .then((r) async{
+          var result = await _getQuery(dataB);
+          this.setState(() => queryResult = result);
+        });
+      });
+    });
   }
 
 
@@ -205,14 +385,17 @@ class ConversationScreenState extends State<ConversationScreen> {
 
 
    // Get a message by its sTime, if there is not entry for that ID, returns null.
-  Future<Message> getMessage(Database db, String contact, String sTime) async{
+  Future<List<Map>> getMessageQuery(Database db, String sTime) async{
     var result = await db.rawQuery('SELECT * FROM $tableName WHERE ${Message.db_sTime} = "$sTime"');
-    if(result.length == 0)return null;
-    return new Message.fromMap(result[0]);
+    return result;
+  }
+
+  Future<int> updateMessage(Database db, String sTime, String field, String value) async {
+    return db.rawUpdate('UPDATE $tableName SET $field = "$value" WHERE sTime = $sTime');
   }
 
   // Delete requested message
-  Future<int> deleteMessage(Database db, String contact, String sTime) async{
+  Future<int> deleteMessage(Database db, String sTime) async{
     return db.rawDelete('DELETE FROM $tableName WHERE ${Message.db_sTime} = "$sTime"');
   }
 
@@ -276,6 +459,70 @@ class ChatMessage extends StatelessWidget {
     );
   }
 }
+
+
+
+
+class MessageEntry {
+  String message;
+  String image;
+  String birth;
+
+  MessageEntry({this.message, this.image, this.birth});
+
+  MessageEntry.fromSnapshot(DataSnapshot snapshot)
+  : message = snapshot.value['m'],
+    image = snapshot.value['i'],
+    birth = snapshot.value['b'];
+
+  toJson() {
+    return {
+      "m": message,
+      "i": image,
+      "b": birth
+    };
+  }
+}
+
+
+class StatusEntry {
+  String status;
+
+  StatusEntry({this.status});
+
+  StatusEntry.fromSnapshot(DataSnapshot snapshot)
+  : status = snapshot.value['s'];
+
+  toJson() {
+    return {
+      "s" : status,
+    };
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

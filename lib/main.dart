@@ -48,7 +48,6 @@ class _MyInitPageState extends State<MyInitPage> {
   @override
   void initState() {
     super.initState();
-    _getDir();
     _checkCurrentUser();
   }
 
@@ -77,15 +76,19 @@ class _MyInitPageState extends State<MyInitPage> {
     });
   }
 
-  void _getDir(){
-
-  }
-
   Future<String> get _localPath async {
   final directory = await getApplicationDocumentsDirectory();
   return directory.path;
   }
   
+
+
+
+
+
+
+
+  //--------------------------------------FIREBASE TOKEN---------------------------------------------------
   void _checkToken() async {
     try {
       // Future to get user token

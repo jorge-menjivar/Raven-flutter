@@ -56,8 +56,8 @@ class SignInScreenState extends State<MySignInScreen> {
 
   @override
   void dispose() {
-    _listener.cancel();
     super.dispose();
+    _listener.cancel();
   }
 
   void _checkCurrentUser() async {
