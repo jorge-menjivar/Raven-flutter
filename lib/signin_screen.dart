@@ -86,7 +86,7 @@ class SignInScreenState extends State<MySignInScreen> {
       }
       else {
         print ("ACCOUNT DOES NOT EXISTS ON DATABASE. USER IS SIGNING UP");
-        Navigator.push(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => UsernameScreen(user)));
       }
     } catch (e) {
       print(e.toString());

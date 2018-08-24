@@ -22,7 +22,8 @@ class ListenersDatabase {
             "CREATE TABLE Listeners ("
                 "${Room.db_contact} TEXT PRIMARY KEY, "
                 "${Room.db_room} TEXT, "
-                "${Room.db_time} TEXT"
+                "${Room.db_time} TEXT, "
+                "${Room.db_cToken} TEXT "
                 ")");
       });
   }
@@ -30,8 +31,8 @@ class ListenersDatabase {
   addToDb(Database db, RequestEntry request, String time) async{
     await db.rawInsert(
           'INSERT INTO '
-              'Listeners(${Room.db_room}, ${Room.db_contact}, ${Room.db_time})'
-              ' VALUES("${request.room}", "${request.contact}", "$time")');
+              'Listeners(${Room.db_contact}, ${Room.db_room}, ${Room.db_time}, ${Room.db_cToken})'
+              ' VALUES("${request.contact}", "${request.room}", "$time", "${request.cToken}")');
   }
 
 
@@ -41,7 +42,7 @@ class ListenersDatabase {
   }
 
   // Delete requested listener
-  Future<int> deleteMessage(Database db, String contact) async{
+  Future<int> deleteListener(Database db, String contact) async{
     return db.rawDelete('DELETE FROM Listeners WHERE ${Room.db_contact} = "$contact"');
   }
 

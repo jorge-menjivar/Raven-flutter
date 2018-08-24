@@ -14,6 +14,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 // New Convo
 import 'package:http/http.dart' as http;
 
+// Notifications
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+
 // Storage
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -25,23 +29,30 @@ class ConversationScreen extends StatefulWidget {
   final String contact;
   final String username;
   final String room;
+  final String contactNToken;
 
-  ConversationScreen({this.user, this.contact, this.username, this.room});
+  ConversationScreen({this.user, this.contact, this.username, this.room, this.contactNToken});
 
   @override
-  ConversationScreenState createState() => new ConversationScreenState(user: user, contact: contact, username: username, room: room);
+  ConversationScreenState createState() => new ConversationScreenState(
+    user: user,
+    contact: contact,
+    username: username,
+    room: room,
+    contactNToken: contactNToken
+  );
 }
 
-class ConversationScreenState extends State<ConversationScreen> {
+class ConversationScreenState extends State<ConversationScreen> with WidgetsBindingObserver{
   final FirebaseUser user;
   final String contact;
   final String username;
-  final String room;
+  String room;
+  String contactNToken;
   
-  ConversationScreenState({this.user, this.contact, this.username, this.room});
-  
+
+  ScrollController controller;
   final TextEditingController _textController = new TextEditingController();
-  final _biggerFont = const TextStyle(fontSize: 17.0);
 
   final String tableName = "Messages";
   var queryResult;
@@ -49,17 +60,26 @@ class ConversationScreenState extends State<ConversationScreen> {
 
   var mainReference;
   var statusesRef;
-  var _inSub, _dSub, _sSub;
+  var trashRef;
+  var _inSub, _sSub, _tSub;
 
+
+  
+  ConversationScreenState({this.user, this.contact, this.username, this.room, this.contactNToken});
+
+  FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  var showTime;
 
   @override
   void initState() {
-      super.initState();
-      mainReference = FirebaseDatabase.instance.reference().child('messages').child(room).child('convo');
-      statusesRef = FirebaseDatabase.instance.reference().child('messages').child(room).child('statuses');
+    super.initState();
+    if (room == '0') {
+      startNewConvo();
+    }
+    else {
       initQuery();
-      if (room == '0')
-        startNewConvo();
+    }
+    WidgetsBinding.instance.addObserver(this);
   }
 
 
@@ -68,21 +88,46 @@ class ConversationScreenState extends State<ConversationScreen> {
     super.dispose();
     closeDb(dataB);
     _inSub.cancel();
-    _dSub.cancel();
     _sSub.cancel();
+    _tSub.cancel();
+    WidgetsBinding.instance.removeObserver(this);
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    try{
+      var initializationSettingsAndroid =
+          new AndroidInitializationSettings('@mipmap/ic_launcher');
+      var initializationSettingsIOS = new IOSInitializationSettings();
+      var initializationSettings = new InitializationSettings(
+          initializationSettingsAndroid, initializationSettingsIOS);
+      flutterLocalNotificationsPlugin = new FlutterLocalNotificationsPlugin();
+      flutterLocalNotificationsPlugin.initialize(initializationSettings);
+      flutterLocalNotificationsPlugin.cancelAll();
+    }
+    catch (e) {
+    }
+  }
+
 
   void startNewConvo() async{
     try {
       var client = new http.Client();
       String token = await user.getIdToken();
       await client.post(
-        "https://us-central1-raven-bd517.cloudfunctions.net/notificationFunctions/command/$username/$contact/" ,
+        "https://us-central1-raven-bd517.cloudfunctions.net/notificationFunctions/r/$username/$contact/t/m/" ,
         headers: {HttpHeaders.AUTHORIZATION: token})
         .then((response) async{
           try {
-            _saveRoomToDb(response.body);
-            _sendRoomRequest(response.body);
+            print(response.body);
+            await setContactNToken()
+            .then((v) async{
+              _saveRoomToDb(response.body);
+              await _sendRoomRequest(response.body).then((s) {
+                room = response.body;
+                initQuery();
+              });
+            });
           }
           catch(e){
             print(e);
@@ -95,28 +140,50 @@ class ConversationScreenState extends State<ConversationScreen> {
     }
   }
 
-  void _saveRoomToDb(String room) async{
+  void _saveRoomToDb(String recRoom) async{
     ListenersDatabase listeners = new ListenersDatabase();
     var time = DateTime.now().millisecondsSinceEpoch.toString();
     await listeners.getDb()
     .then((lisDb) async {
       await lisDb.rawInsert(
           'INSERT INTO '
-              'Listeners(${Room.db_room}, ${Room.db_contact}, ${Room.db_time})'
-              ' VALUES("$room", "$contact", "$time")')
-      .then((){
-        listeners.closeDb(lisDb);
-      });
+              'Listeners(${Room.db_contact}, ${Room.db_room}, ${Room.db_time}, ${Room.db_cToken})'
+              ' VALUES("$contact", "$recRoom", "$time", "$contactNToken")');
     });
   }
 
+// Get the notification token for the contact
+  Future setContactNToken() async{
+    try {
+      var client = new http.Client();
+      String token = await user.getIdToken();
+      await client.post(
+        "https://us-central1-raven-bd517.cloudfunctions.net/notificationFunctions/t/u/$contact/t/m" ,
+        headers: {HttpHeaders.AUTHORIZATION: token})
+        .then((response) async{
+          try {
+            print(response.body);
+            contactNToken = response.body;
+          }
+          catch(e){
+            print(e);
+          }
+        })
+      .whenComplete(client.close);
+    }
+    catch(e){
+      print('CONNECTION ERROR');
+    }
+  }
 
-  void _sendRoomRequest(String room) async{
+  Future _sendRoomRequest(String recRoom) async{
     var reqRef = FirebaseDatabase.instance.reference().child('users').child(contact).child('requests');
+    var nToken = await FirebaseMessaging().getToken();
     var request = new RequestEntry(
       //TODO let the receiver very the username of the sender through the server instead
-      room: room,
-      contact: username
+      room: recRoom,
+      contact: username,
+      cToken : nToken
     );
     reqRef.push().set(request.toJson());
   }
@@ -125,14 +192,22 @@ class ConversationScreenState extends State<ConversationScreen> {
     await _getDb(contact)
     .then((database) async{
       dataB = database;
-      var result = await _getQuery(database);
-      this.setState(() => queryResult = result);
     });
+  
+    mainReference = FirebaseDatabase.instance.reference().child('messages').child(room).child('convo');
+    statusesRef = FirebaseDatabase.instance.reference().child('messages').child(room).child('statuses');
+    trashRef = FirebaseDatabase.instance.reference().child('messages').child(room).child('trash');
 
     // Listeners for online database.
-    _inSub = mainReference.orderByKey().limitToLast(1).onChildAdded.listen(_messageAdded); // New Message
-    _dSub = mainReference.onChildRemoved.listen(_messageDeleted); // Remove Message
+    _inSub = mainReference.orderByKey().onChildAdded.listen(_messageAdded); // New Message
+    _tSub = trashRef.onChildAdded.listen(_messageDeleted); // Remove Message
     _sSub = statusesRef.onChildChanged.listen(_statusChanged); // Message Status Changed
+
+    
+    var result = await _getQuery(dataB);
+
+    showTime = new List<bool>.filled(result.length, false, growable: true);
+    setState(() => queryResult = result);
   }
 
 
@@ -142,20 +217,17 @@ class ConversationScreenState extends State<ConversationScreen> {
     var sTime = event.snapshot.key;
     var rTime = DateTime.now().millisecondsSinceEpoch.toString();
 
-    if (mEntry.birth != username){
-      await getMessageQuery(dataB, sTime)
-      .then((localQ) async{
-        if (localQ.length == 0){
-          var message = new MessageEntry(
-            message:  mEntry.message,
-            birth:  mEntry.birth
-          );
+    await getMessageQuery(dataB, sTime)
+    .then((localQ) async{
+      if (localQ.length == 0){
+        var message = new MessageEntry(
+          message:  mEntry.message,
+          birth:  mEntry.birth
+        );
+        
+        addToDb(dataB, message, sTime, rTime, '2'); //Status 2 (Message Received)
 
-          addToDb(dataB, message, sTime, rTime, '2'); //Status 2 (Message Received)
-          
-          var result = await _getQuery(dataB);
-          setState(() => queryResult = result);
-
+        if (mEntry.birth != username){
           var status = new StatusEntry(
             status: "2"
           );
@@ -163,24 +235,39 @@ class ConversationScreenState extends State<ConversationScreen> {
           // Letting the database know that we received the message.
           statusesRef.child(sTime).update(status.toJson());
         }
-        else return;
-      });
-    }
+      }
+      else return;
+    });
+
+    var result = await _getQuery(dataB);
+    setState(() => queryResult = result);
   }
 
   void _statusChanged(Event event) async{
     var sEntry = StatusEntry.fromSnapshot(event.snapshot);
     var sTime = event.snapshot.key;
     updateMessage(dataB, sTime, 'status', sEntry.status);
+
+    var result = await _getQuery(dataB);
+    setState(() => queryResult = result);
   }
 
 
   void _messageDeleted(Event event) async{
+    MessageEntry mEntry = MessageEntry.fromSnapshot(event.snapshot);
     var sTime = event.snapshot.key;
-    deleteMessage(dataB, sTime);
+    try {
+      if (mEntry.birth != username) {
+        deleteMessage(dataB, sTime);
+        trashRef.child(sTime).set(null);
 
-    var result = await _getQuery(dataB);
-    setState(() => queryResult = result);
+        var result = await _getQuery(dataB);
+        setState(() => queryResult = result);
+      }
+    }
+    catch (e) {
+      print(e);
+    }
   }
 
   Future addToDb(Database db, MessageEntry entry, String sTime, String rTime, String status) async {
@@ -193,6 +280,7 @@ class ConversationScreenState extends State<ConversationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: new AppBar(
         title: new Text("Conversation with " + contact),
         elevation: 4.0,
@@ -262,15 +350,17 @@ class ConversationScreenState extends State<ConversationScreen> {
       birth:  username
     );
 
+    print(room);
+    print(username);
+    print(contact);
+
     // Status linked to the message
     var status = new StatusEntry(
-      status: "1" // Status is SENT because when it is first read it would have already been sent.
+      status: "2" // Status is SENT because when it is first read it would have already been sent.
     );
 
-    // Add to local database with UNSENT status.
-    addToDb(dataB, message, sTime, "0", "0");
-    
-    print(user.uid.toString());
+    // Add to local database with SENT status.
+    addToDb(dataB, message, sTime, "0", "2");
   
     // Add to cloud database
     mainReference.child(sTime).set(message.toJson())
@@ -282,74 +372,286 @@ class ConversationScreenState extends State<ConversationScreen> {
         this.setState(() => queryResult = result);
       });
     });
+
+    try {
+      var client = new http.Client();
+      String token = await user.getIdToken();
+      await client.post(
+        "https://us-central1-raven-bd517.cloudfunctions.net/notificationFunctions/m/$username/u/$contactNToken/$text/" ,
+        headers: {HttpHeaders.AUTHORIZATION: token})
+        .then((response) async{
+          try {
+            print(response.body);
+          }
+          catch(e){
+            print(e);
+          }
+        })
+      .whenComplete(client.close);
+    }
+    catch(e){
+      print('CONNECTION ERROR');
+    }
   }
 
 
   Widget buildMessages() {
     return ListView.builder(
-      padding: const EdgeInsets.all(22.0),
+      padding: const EdgeInsets.all(16.0),
       reverse: true,
 
       // For even rows, the function adds a ListTile row for the word pairing.
       // For odd rows, the function adds a Divider widget to visually
       itemBuilder: (context, i){
-        if (queryResult != null && queryResult.length> 0 && i < queryResult.length){
-          var row = queryResult[i];
-          if (row['birth'] == contact){
-            return _buildReceivedRow(row['message'], row['sTime']);
-          }
-          else {
-            return _buildSentRow(row['message'], row['status'], row['sTime']);
-          }
+        return getTile(i);
+      }
+    );
+  }  
+
+  Widget getTile (int i){
+    if (queryResult != null && queryResult.length> 0 && i < queryResult.length){
+      var row = queryResult[i];
+      if (row['birth'] == username){
+        return _buildSentRow(row['message'], row['status'], row['sTime'], i);
+      }
+      else {
+        if (row['status'] == "2"){
+          updateStatus(row['sTime'], "3");
         }
+        return _buildReceivedRow(row['message'], row['sTime'], i);
+      }
+    }
+    return null;
+  }
+
+  updateStatus(String sTime, String s) {
+    var status = new StatusEntry(
+      status: s
+    );
+    statusesRef.child(sTime).update(status.toJson());
+  }
+
+
+
+
+
+
+// ------------------------------------ SENT MESSAGES ---------------------------------------------------------
+  Widget _buildSentRow(String message, String status, String sTime, int i) {
+
+    // Text style
+    var textStyle = new TextStyle(
+      fontSize: 16.0,
+      color: Colors.white,
+    );
+
+    // time
+    int secs = int.tryParse(sTime);
+    var dt = DateTime.fromMillisecondsSinceEpoch(secs);
+    var time = "${dt.hour}:${dt.minute}";
+
+    // chat bubble
+    final radius = BorderRadius.only(
+      topLeft: Radius.circular(20.0),
+      topRight: Radius.circular(20.0),
+      bottomLeft: Radius.circular(20.0),
+      bottomRight: Radius.circular(20.0),
+    );
+
+    // bubble Color
+    var color = Colors.purple[900];
+
+    var timeRow;
+    if (showTime[i] == true){
+      timeRow = new Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: <Widget>[
+          new Container(
+            margin: const EdgeInsets.only(right : 3.0),
+            child: new Text(
+              time.toString(),
+              textAlign: TextAlign.right,
+              style: new TextStyle(
+                fontSize: 12.0
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    else {
+      timeRow = null;
+    }
+
+    // received or read icon
+    var icon;
+    if (status == '2'){
+      icon = Icons.chat_bubble_outline;
+    }
+    else if (status == '3'){
+      icon = Icons.chat_bubble;
+    }
+
+    return ListTile(
+      contentPadding: EdgeInsets.only(left: 80.0),
+      title: new Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: .5,
+                  spreadRadius: 1.0,
+                  color: Colors.black.withOpacity(.12)
+                )
+              ],
+              color: color,
+              borderRadius: radius,
+            ),
+            child:new Text(
+            message,
+            textAlign: TextAlign.right,
+            style: textStyle,
+            ),
+          ),
+
+        ],
+      ),
+      subtitle: timeRow,
+      trailing: new Icon(
+              icon,
+              color: Colors.blue,
+              size: 20.0,),
+      onLongPress: () {      // Add 9 lines from here...
+        setState(() {
+          _deleteSentMessage(sTime);
+        });
+      },
+      onTap: () {
+        setState(() {
+          //toggle boolean
+          showTime[i] = !showTime[i];
+        });
       }
     );
   }
 
-  Widget _buildSentRow(String message, String status, String sTime) {
-    return ListTile(
-      contentPadding: EdgeInsets.only(left: 80.0),
-      title: Text(
-        message,
-        textAlign: TextAlign.right,
-        style: _biggerFont,
-      ),
-      onTap: () {      // Add 9 lines from here...
-        setState(() {
-          _deleteSentMessage(sTime);
-        });
-      }  
-    );
-  }
 
-  Widget _buildReceivedRow(String message, String sTime) {
+
+
+  // ---------------------------------- RECEIVED MESSAGES -------------------------------------------------
+  Widget _buildReceivedRow(String message, String sTime, int i) {
+
+    
+
+    // Text style
+    var textStyle = new TextStyle(
+      fontSize: 16.0,
+      color: Colors.black,
+    );
+
+    // time
+    int secs = int.tryParse(sTime);
+    var dt = DateTime.fromMillisecondsSinceEpoch(secs);
+    var time = "${dt.hour}:${dt.minute}";
+
+    // chat bubble
+    final radius = BorderRadius.only(
+      topLeft: Radius.circular(20.0),
+      topRight: Radius.circular(20.0),
+      bottomLeft: Radius.circular(20.0),
+      bottomRight: Radius.circular(20.0),
+    );
+
+    // bubble Color
+    var color = Colors.blueGrey[50];
+
+    var timeRow;
+    if (showTime[i] == true){
+      timeRow = Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: <Widget>[
+          new Container(
+            child: new Text(
+              time.toString(),
+              textAlign: TextAlign.left,
+              style: new TextStyle(
+                fontSize: 12.0
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    else {
+      timeRow = null;
+    }
+        
     return ListTile(
       contentPadding: EdgeInsets.only(right: 80.0),
-      title: Text(
-        message,
-        textAlign: TextAlign.left,
-        style: _biggerFont,
+      leading: new CircleAvatar(
+        child: new Text(contact.toUpperCase()[0])
       ),
-      onTap: () {      // Add 9 lines from here...
+      title: new Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  blurRadius: .5,
+                  spreadRadius: 1.0,
+                  color: Colors.black.withOpacity(.12)
+                )
+              ],
+              color: color,
+              borderRadius: radius,
+            ),
+            child:new Text(
+            message,
+            textAlign: TextAlign.left,
+            style: textStyle,
+            ),
+          ),
+
+        ],
+      ),
+      subtitle: timeRow,
+      onLongPress: () {      // Add 9 lines from here...
         setState(() {
           _deleteSentMessage(sTime);
         });
-      }  
+      },
+      onTap: () {
+        setState(() {
+          //toggle boolean
+          showTime[i] = !showTime[i];
+        });
+      }
     );
   }
 
 
 
   _deleteSentMessage(String sTime){
+    var trashMessage = new MessageEntry(
+      birth: username
+    );
     mainReference.child(sTime).set(null)
     .then((v) async{
       statusesRef.child(sTime).set(null)
       .then((v) async{
-        // Refresh Screen
-        deleteMessage(dataB, sTime)
-        .then((r) async{
-          var result = await _getQuery(dataB);
-          this.setState(() => queryResult = result);
+        trashRef.child(sTime).set(trashMessage.toJson())
+        .then((v) async{
+          // Refresh Screen
+          deleteMessage(dataB, sTime)
+          .then((r) async{
+            var result = await _getQuery(dataB);
+            this.setState(() => queryResult = result);
+          });
         });
       });
     });
@@ -402,14 +704,6 @@ class ConversationScreenState extends State<ConversationScreen> {
   // Close database
   Future closeDb(Database db) async {
     return db.close();
-  }
-
-  void checkTime() async {
-    var now = DateTime.now().millisecondsSinceEpoch;
-    print(now);
-    var inCurrentTime = DateTime.fromMillisecondsSinceEpoch(now);
-    print(inCurrentTime);
-
   }
 
   Future _getQuery(Database db) async {

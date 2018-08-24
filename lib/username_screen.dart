@@ -97,7 +97,10 @@ class UsernameScreenState extends State<UsernameScreen> {
                         if (_formFieldKey.currentState.validate() == true){
                           Scaffold
                           .of(context)
-                          .showSnackBar(SnackBar(content: Text('Processing Data')));
+                          .showSnackBar(
+                            SnackBar(
+                              content: Text('Processing Data'),
+                              duration: new Duration(seconds: 4)));
                           _tryRegistration();
                         }
                       }
